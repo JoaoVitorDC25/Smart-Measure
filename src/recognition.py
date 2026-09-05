@@ -7,7 +7,7 @@ import imutils
 import numpy as np
 from imutils import contours as contour_utils
 
-from config import DIGIT_MIN_WIDTH, DIGIT_MAX_WIDTH, DIGIT_MIN_HEIGHT, DIGIT_MAX_HEIGHT
+from config import DIGIT_MIN_WIDTH, DIGIT_MAX_WIDTH, DIGIT_MIN_HEIGHT, DIGIT_MAX_HEIGHT, SEGMENT_WIDTH_RATIO, SEGMENT_HEIGHT_RATIO, MIDDLE_SEGMENT_RATIO, ACTIVATION_RATIO
 
 # ----- Dicionário de padrões de segmentos para dígitos -----
 DIGITS_LOOKUP = {
@@ -42,3 +42,37 @@ def filter_digit_contours(contours: Sequence[np.ndarray]) -> list[np.ndarray]:
     digit_contours = contour_utils.sort_contours(digit_contours, method="left-to-right")[0]
     return digit_contours
 
+def analyze_segments(digit_roi: np.ndarray) -> int | str:
+    """Retorna o dígito correspondente ao padrão de segmentos detectado."""
+    roi_height, roi_width = digit_roi.shape
+    
+    segment_width = int(roi_width * SEGMENT_WIDTH_RATIO)
+    segment_height = int(roi_height * SEGMENT_HEIGHT_RATIO)
+    middle_adjustment = int(roi_height * MIDDLE_SEGMENT_RATIO)
+
+    segments = [
+        ((0, 0), 
+         (roi_width, segment_height)),                          # Seg0 — barra horizontal superior                       
+        ((0, 0), 
+         (segment_width, roi_height // 2)),                     # Seg1 — barra vertical superior esquerda
+        ((roi_width - segment_width, 0), 
+         (roi_width, roi_height // 2)),                         # Seg2 — barra vertical superior direita
+        ((0, (roi_height // 2) - middle_adjustment), 
+         (roi_width, (roi_height // 2) + middle_adjustment)),   # Seg3 — barra horizontal do meio
+        ((0, roi_height // 2), 
+         (segment_width, roi_height)),                          # Seg4 — barra vertical inferior esquerda
+        ((roi_width - segment_width, roi_height // 2), 
+         (roi_width, roi_height)),                              # Seg5 — barra vertical inferior direita
+        ((0, roi_height - segment_height), 
+         (roi_width, roi_height)),                              # Seg6 — barra horizontal inferior
+    ]
+
+    active_segments = [0] * len(segments)
+    
+    for index, ((x_start, y_start), (x_end, y_end)) in enumerate(segments):
+        segment_roi = digit_roi[y_start:y_end, x_start:x_end]
+        area = (x_end - x_start) * (y_end - y_start)
+        if area and cv.countNonZero(segment_roi) / float(area) > ACTIVATION_RATIO:
+            active_segments[index] = 1
+
+    return DIGITS_LOOKUP.get(tuple(active_segments), "?")
