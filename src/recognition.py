@@ -76,3 +76,37 @@ def analyze_segments(digit_roi: np.ndarray) -> int | str:
             active_segments[index] = 1
 
     return DIGITS_LOOKUP.get(tuple(active_segments), "?")
+
+def process_display(threshold: np.ndarray, output: np.ndarray, x_offset: int, y_offset: int,) -> str:
+    """Reconhece os dígitos e desenha as detecções no quadro de saída."""
+    found = imutils.grab_contours(cv.findContours(threshold.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE))
+    
+    digit_contours = filter_digit_contours(found)
+
+    result = []
+    
+    for contour in digit_contours:
+        x, y, width, height = cv.boundingRect(contour)
+        digit_roi = threshold[y : y + height, x : x + width]
+        digit = analyze_segments(digit_roi)
+        result.append(str(digit))
+
+        color = (0, 255, 0) if digit != "?" else (0, 0, 255)
+        cv.rectangle(
+            output,
+            (x_offset + x, y_offset + y),
+            (x_offset + x + width, y_offset + y + height),
+            color,
+            1,
+        )
+        cv.putText(
+            output,
+            str(digit),
+            (x_offset + x - 10, max(20, y_offset + y - 10)),
+            cv.FONT_HERSHEY_SIMPLEX,
+            0.65,
+            color,
+            2,
+        )
+
+    return "".join(result)
