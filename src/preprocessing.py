@@ -8,6 +8,7 @@ from config import MEDIAN_BLUR, ADAPTIVE_BLOCK_SIZE, ADAPTIVE_C, FINAL_MEDIAN_KE
 
 def preprocess_image(warped: np.ndarray) -> np.ndarray:
     """Converte a imagem em uma máscara binária adequada aos segmentos."""
+    
     if warped.size == 0:
         raise ValueError("A região de interesse está vazia.")
     
@@ -33,6 +34,5 @@ def remove_noise(threshold: np.ndarray) -> np.ndarray:
     
     # Dilata para recuperar partes apagadas demais
     kernel = np.ones((2,2), np.uint8)
-    thresh = cv.dilate(thresh, kernel, iterations=2)
-    return thresh
+    return cv.dilate(cleaned, kernel, iterations=2)
 
