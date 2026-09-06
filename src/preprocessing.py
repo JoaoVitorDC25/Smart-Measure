@@ -2,7 +2,7 @@ import cv2 as cv
 import imutils
 import numpy as np
 
-from config import MEDIAN_BLUR, ADAPTIVE_BLOCK_SIZE, ADAPTIVE_C, FINAL_MEDIAN_KERNEL
+from config import MEDIAN_BLUR, ADAPTIVE_BLOCK_SIZE, ADAPTIVE_C, FINAL_MEDIAN_KERNEL, VERTICAL_CLOSE_KERNEL,VERTICAL_CLOSE_ITERATIONS, DILATION_KERNEL, DILATION_ITERATIONS
 
 """Operações de pré-processamento da região do display."""
 
@@ -29,10 +29,29 @@ def remove_noise(threshold: np.ndarray) -> np.ndarray:
         cv.findContours(cleaned.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE))
     
     for contour in contours:
-        if cv.contourArea(contour) < 15 or cv.boundingRect(contour)[2] > 150:
-            cv.drawContours(threshold, [contour], -1, 0, -1)
+        _, _, width, _ = cv.boundingRect(contour)
+        if (cv.contourArea(contour) < 15 or width > 150):
+            cv.drawContours( cleaned, [contour], -1, 0, -1)
+    
+    # for contour in contours:
+    #     if cv.contourArea(contour) < 15 or cv.boundingRect(contour)[2] > 150:
+    #         cv.drawContours(cleaned, [contour], -1, 0, -1)
+    
+    # Une partes separadas verticalmente.
+    vertical_kernel = cv.getStructuringElement(
+        cv.MORPH_RECT,
+        VERTICAL_CLOSE_KERNEL
+    )
+
+    cleaned = cv.morphologyEx(
+        cleaned,
+        cv.MORPH_CLOSE,
+        vertical_kernel,
+        iterations=VERTICAL_CLOSE_ITERATIONS
+    )
+
     
     # Dilata para recuperar partes apagadas demais
     kernel = np.ones((2,2), np.uint8)
-    return cv.dilate(cleaned, kernel, iterations=2)
+    return cv.dilate(cleaned, kernel, iterations=DILATION_ITERATIONS)
 
